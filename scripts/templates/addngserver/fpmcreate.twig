@@ -1,0 +1,57 @@
+server {
+        root {{ public_path }};
+        index index.php index.html;
+        server_name {{ domain_name }};
+
+
+		add_header X-Frame-Options "SAMEORIGIN";
+		add_header X-XSS-Protection "1; mode=block";
+		add_header X-Content-Type-Options "nosniff";
+
+		charset utf-8;
+
+
+
+
+        location / {
+		autoindex on;
+                #try_files $uri $uri.html $uri/ @extensionless-php;
+                #try_files $uri $uri/ =404;
+		#try_files $uri $uri/ /index.php?m=$request_uri;
+		try_files $uri $uri/ /index.php?$query_string;
+        }	
+
+		location = /favicon.ico { access_log off; log_not_found off; }
+		location = /robots.txt  { access_log off; log_not_found off; }
+
+		error_page 404 /index.php;
+
+        location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+                fastcgi_pass unix:/var/run/php/{{fpm_name}}-fpm.sock;
+				fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+				include fastcgi_params;
+        }
+
+        location @extensionless-php {
+                rewrite ^(.*)$ $1.php last;
+        }
+
+        location ~ /\.ht {
+                deny all;
+        }
+
+        location ~* \.(?:ico|css|js|gif|jpe?g|png)$ {
+            expires 30d;
+            add_header Pragma public;
+            add_header Cache-Control "public";
+        }
+
+
+
+
+
+
+
+
+}

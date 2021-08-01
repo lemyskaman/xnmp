@@ -1,0 +1,189 @@
+#! /bin/bash 
+
+
+INSTALL=false
+
+show_help(){
+	echo ""
+	echo ""
+	echo "xnmp [--option1 ...] [--option-with=value ...]"
+	echo ""
+	echo "all params with (*) are mandatory"
+	echo "Options:"
+	echo " -i,   --install             Proceed to setup repo and install:"
+	echo "                             nginx + php + mariadb. "
+	echo ""
+	echo " -s,   --setup-repo          Proceed to install sury nginx and php repo with"
+	echo "							   the Officia Mariadb repositories (ubuntu or debian)"
+	echo ""
+	echo " -n,   --nginx-install       Install Nginx server"
+	echo ""
+	echo " -m,   --mariadb-install     Install Mariadb version 10.5"
+	echo ""
+    echo " -p=,  --php-install=        Install a php version on system with dependencies"
+    echo "                             for laravel development, when used the php version"
+    echo "                             must be passed as option value."
+	echo ""
+
+	return 0
+}
+
+#settign the param vars
+for i in "$@"
+do
+case $i in
+    -help|--help)
+    show_help
+    return 0
+    shift # past argument=value
+    ;;
+    -i*|--install*)
+
+    INSTALL=true
+    shift # past arg
+    ;;
+    -s*|--setup-repo*)
+
+    SETUP_REPO=true
+    shift # past arg
+    ;;
+    -n*|--nginx-install*)
+
+    NGIX_INSTALL=true
+    shift # past arg
+    ;;
+    -m*|--mariadb-install*)
+
+    MARIADB_INSTALL=true
+    shift # past arg
+    ;;
+    -p=*|--php-install=*)
+    PHP_VERSION="${i#*=}"
+    shift # past arg
+    ;;
+    *)
+          # unknown option
+    ;;
+esac
+done
+
+
+echo $INSTALL
+echo $SETUP_REPO
+echo $NGIX_INSTALL
+echo $MARIADB_INSTALL
+echo $PHP_VERSION
+
+validate_php_version(){
+PHP_VERSION=""
+valid_php_versions=("8.0" "7.4" "7.3")
+
+eho "validating php $1"
+
+if [ -z "$1" ];then
+	read -p "Please input the desired php version: ", PHP_VERSION
+fi
+
+for valid_php_version in "${valid_php_versions[@]}";
+do
+	if [[ $1 == $valid_php_version ]]; then
+		PHP_VERSION=$valid_php_version;
+		break
+	fi 
+done
+
+}
+
+
+export DETECTED_VALID_DISTRO_NAME
+export DETECTED_VALID_DISTRO_VERSION
+repo_setup(){
+	. ./scripts/bash_helpers/detect_valid_linux_distro_name     Ubuntu
+
+	#ubuntu
+	if [[ $DETECTED_VALID_DISTRO_NAME == Ubuntu ]]; then
+	. ./scripts/bash_helpers/detect_valid_linux_distro_version  18.04 20.04
+		if [[ $DETECTED_VALID_DISTRO_VERSION == "18.04" ||  $DETECTED_VALID_DISTRO_VERSION == "20.04" ]]; then
+			echo  "Ondrej nginx-mainline, and Ondrej php and ppa repo will be added "
+			read -p "Are you sure to continue? [Y/n] " -n 1 -r
+			echo ""
+			if [[ $REPLY =~ ^[Yy]$ ]];then
+				echo "Installing needed packages"
+				sudo apt install -y curl wget gnupg2 ca-certificates lsb-release apt-transport-https
+
+				echo "Adding the ondre nginx repository "
+				sudo add-apt-repository ppa:ondrej/nginx-mainline
+				echo "Adding the Ondre php repository to your system."
+				sudo add-apt-repository ppa:ondrej/php
+
+			fi
+			echo  "Mariadb source reposiitory will be added"
+			read -p "Are you sure to continue? [Y/n] " -n 1 -r
+			echo ""
+			if [[ $REPLY =~ ^[Yy]$ ]];then
+				sudo apt-get install software-properties-common
+				sudo apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc'
+				sudo add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.5/ubuntu focal main'
+			fi
+		fi
+	fi
+
+
+
+
+
+}
+
+install_nginx(){
+	sudo apt install nginx
+}
+
+install_mariadb(){
+	sudo apt install mariadb-server sqlite3
+}
+
+install_php(){
+	
+	validate_php_version $PHP_VERSION
+	sudo apt install git-all sqlite3 nodejs npm php$PHP_VERSION-{fpm,sqlite3,mysql,xml,xmlrpc,curl,gd,imagick,cli,dev,imap,mbstring,opcache,soap,zip,intl,bcmath,bz2,xdebug,ctype,gmp,bcmath,dev} php$PHP_VERSION -y
+
+}
+
+
+
+if [[ $INSTALL == true ]] ; then
+	echo "You've choose install"
+	repo_setup
+	install_nginx
+	install_mariadb
+	install_php
+else
+
+	if [[  $SETUP_REPO != true && $SETUP_REPO  != true && $NGIX_INSTALL  != true && $MARIADB_INSTALL  != true && -z $PHP_VERSION ]]; then 
+		show_help
+	else
+
+		if [[ $SETUP_REPO == true ]]; then 
+			repo_setup
+		fi
+
+		if [[ $NGIX_INSTALL == true ]]; then 
+			install_nginx
+		fi
+
+		if [[ $MARIADB_INSTALL == true ]]; then 
+			install_mariadb
+		fi
+
+		if [[ -n $PHP_VERSION ]]; then 
+			install_php
+		fi
+	fi
+
+fi
+
+
+
+
+
+

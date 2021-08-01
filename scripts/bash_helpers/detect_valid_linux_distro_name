@@ -1,0 +1,44 @@
+#! /bin/bash 
+
+if [[ -z $1 ]] ;then
+	echo "This script need at least one valid distro name passed as param"
+	echo ""
+	echo "Usage example:"
+	echo "$0 [distroname-1] [distroname-2] ... [distroname-n] "
+	exit;
+fi
+
+function validate() {
+for valid_distro in "$@";
+do
+	if [[ $detected_distro == $valid_distro ]]; then
+		DETECTED_VALID_DISTRO_NAME=$detected_distro;
+		break
+	fi 
+done
+
+
+if [[ -z $DETECTED_VALID_DISTRO_NAME  ]]
+then
+      echo "Unable to determinate your linux Distro name or the given one \"$detected_distro\" is not among the valid distro names." 
+      echo "Valid distro names are:"
+      for name in "$@"; do echo "$name"; done
+      echo ""
+      read -p "Please type one of the names from the above list to select it: " detected_distro
+      validate $@
+
+else
+      echo "$DETECTED_VALID_DISTRO_NAME has been selected as your installation distro name"
+fi
+
+
+}
+
+
+detected_distro=$(lsb_release -i | cut -f 2)
+validate $@
+export DETECTED_VALID_DISTRO_NAME
+
+
+
+

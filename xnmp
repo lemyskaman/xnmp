@@ -13,16 +13,26 @@ show_help(){
 	echo " -i,   --install             Proceed to setup repo and install:"
 	echo "                             nginx + php + mariadb. "
 	echo ""
-	echo " -s,   --setup-repo          Proceed to install sury nginx and php repo with"
-	echo "							   the Officia Mariadb repositories (ubuntu or debian)"
+	echo "       --setup-repo          Proceed to install sury nginx and php repo with"
+	echo "                             the Official Mariadb repositories (ubuntu or debian)."
 	echo ""
-	echo " -n,   --nginx-install       Install Nginx server"
+	echo "       --nginx-install       Install Nginx server."
 	echo ""
-	echo " -m,   --mariadb-install     Install Mariadb version 10.5"
+	echo "       --mariadb-install     Install Mariadb version 10.5."
 	echo ""
-    echo " -p=,  --php-install=        Install a php version on system with dependencies"
-    echo "                             for laravel development, when used the php version"
-    echo "                             must be passed as option value."
+  echo " -p=,  --php-install=        Install a php version on system with dependencies"
+  echo "                             for laravel development, when used the php version"
+  echo "                             must be passed as option value."
+	echo ""
+  echo " -la=, --local-domain-add=   Add a new domain name as entry on your hosts file,"
+  echo "                             pointing to 127.0.0.1 (localhost). You must pass"
+  echo "                             the domanin name as value for this option"
+	echo ""
+  echo " -ld=, --local-domain-del=   Remove a domain name entry on your hosts file."
+  echo "                             You must pass the domain name as value for this option"
+	echo ""
+	echo " -fpm=, --fpm-add=           Add a new fpm file to be used."
+  echo "                             You must pass the domain name as value for this option"
 	echo ""
 
 	return 0
@@ -42,23 +52,35 @@ case $i in
     INSTALL=true
     shift # past arg
     ;;
-    -s*|--setup-repo*)
+    --setup-repo*)
 
     SETUP_REPO=true
     shift # past arg
     ;;
-    -n*|--nginx-install*)
+    --nginx-install*)
 
     NGIX_INSTALL=true
     shift # past arg
     ;;
-    -m*|--mariadb-install*)
+    --mariadb-install*)
 
     MARIADB_INSTALL=true
     shift # past arg
     ;;
     -p=*|--php-install=*)
     PHP_VERSION="${i#*=}"
+    shift # past arg
+    ;;
+    -la=*|--local-domain-add=*)
+    DOMAIN_ADD="${i#*=}"
+    shift # past arg
+    ;;
+    -ld=*|--local-domain-del=*)
+    DOMAIN_DEL="${i#*=}"
+    shift # past arg
+    ;;
+    -fpm=*|--fpm-add=*)
+    FPM_CREATE_USER="${i#*=}"
     shift # past arg
     ;;
     *)
@@ -73,15 +95,18 @@ echo $SETUP_REPO
 echo $NGIX_INSTALL
 echo $MARIADB_INSTALL
 echo $PHP_VERSION
+echo $DOMAIN_ADD
+echo $DOMAIN_DEL
+echo $FPM_CREATE_USER
 
 validate_php_version(){
 PHP_VERSION=""
 valid_php_versions=("8.0" "7.4" "7.3")
 
-eho "validating php $1"
+echo "validating php $1"
 
 if [ -z "$1" ];then
-	read -p "Please input the desired php version: ", PHP_VERSION
+	read -p "Please input the desired php version: " PHP_VERSION
 fi
 
 for valid_php_version in "${valid_php_versions[@]}";
@@ -149,6 +174,21 @@ install_php(){
 
 }
 
+add_domain_to_local(){
+	. ./scripts/hosts_file_manager add 127.0.0.1 $1
+}
+
+remove_domain_to_local(){
+	. ./scripts/hosts_file_manager remove 127.0.0.1 $1
+}
+
+create_fpm_for_user(){
+	sudo php scripts/fpm_create.php $1 $2
+
+}
+
+
+
 
 
 if [[ $INSTALL == true ]] ; then
@@ -159,7 +199,16 @@ if [[ $INSTALL == true ]] ; then
 	install_php
 else
 
-	if [[  $SETUP_REPO != true && $SETUP_REPO  != true && $NGIX_INSTALL  != true && $MARIADB_INSTALL  != true && -z $PHP_VERSION ]]; then 
+	if [[  $SETUP_REPO != true && 
+		   $SETUP_REPO  != true && 
+		   $NGIX_INSTALL  != true && 
+		   $MARIADB_INSTALL  != true && 
+		   -z $PHP_VERSION &&
+		   -z $DOMAIN_ADD &&
+		   -z $DOMAIN_DEL &&
+		   -z $FPM_CREATE_USER
+
+	]]; then 
 		show_help
 	else
 
@@ -177,6 +226,18 @@ else
 
 		if [[ -n $PHP_VERSION ]]; then 
 			install_php
+		fi
+		
+		if [[ -n $DOMAIN_ADD ]]; then 
+			add_domain_to_local $DOMAIN_ADD
+		fi
+		if [[ -n $DOMAIN_DEL ]]; then 
+			remove_domain_to_local $DOMAIN_DEL
+		fi
+
+		if [[ -n $FPM_CREATE_USER ]]; then
+		  validate_php_version $PHP_VERSION 
+			create_fpm_for_user $FPM_CREATE_USER $PHP_VERSION
 		fi
 	fi
 

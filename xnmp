@@ -67,8 +67,12 @@ case $i in
     MARIADB_INSTALL=true
     shift # past arg
     ;;
-    -p=*|--php-install=*)
+    -php=*|--php-version=*)
     PHP_VERSION="${i#*=}"
+    shift # past arg
+    ;;
+    -p=*|--php-install=*)
+    PHP_VERSION_TO_INSTALL="${i#*=}"
     shift # past arg
     ;;
     -la=*|--local-domain-add=*)
@@ -90,35 +94,53 @@ esac
 done
 
 
+export PHP_VERSION
+export LINUX_USER
+
 echo $INSTALL
 echo $SETUP_REPO
 echo $NGIX_INSTALL
 echo $MARIADB_INSTALL
+echo $PHP_VERSION_TO_INSTALL
 echo $PHP_VERSION
 echo $DOMAIN_ADD
 echo $DOMAIN_DEL
 echo $FPM_CREATE_USER
 
 validate_php_version(){
-PHP_VERSION=""
-valid_php_versions=("8.0" "7.4" "7.3")
+  PHP_VERSION=""
+  valid_php_versions=("8.0" "7.4" "7.3")
+  echo "Validating php version: $1"
+  echo ""
+  export VALUE_SELECTED_FROM_ARGS
+  if [[ -n $1 ]];then
+   . ./scripts/bash_helpers/in_arguments $1 "${valid_php_versions[@]}"
+  else
+   . ./scripts/bash_helpers/in_arguments "x.x" "${valid_php_versions[@]}"
+  fi
+  export PHP_VERSION=$VALUE_SELECTED_FROM_ARGS
+}
 
-echo "validating php $1"
+validate_user(){
+  LINUX_USER=""
+  valid_users=( $(cat /etc/passwd | cut -d: -f1) )
 
-if [ -z "$1" ];then
-	read -p "Please input the desired php version: " PHP_VERSION
-fi
-
-for valid_php_version in "${valid_php_versions[@]}";
-do
-	if [[ $1 == $valid_php_version ]]; then
-		PHP_VERSION=$valid_php_version;
-		break
-	fi 
-done
+  echo "Validating linux user: $1"
+  echo ""
+  export VALUE_SELECTED_FROM_ARGS
+  if [[ -n $1 ]];then
+   . ./scripts/bash_helpers/in_arguments $1 "${valid_users[@]}"
+  else
+   . ./scripts/bash_helpers/in_arguments "unspecified" "${validvalid_users[@]}"
+  fi
+  export LINUX_USER=$VALUE_SELECTED_FROM_ARGS
 
 }
 
+restart_php(){
+  echo "Restarting php fpm..."
+	sudo systemctl restart php$1-fpm
+}
 
 export DETECTED_VALID_DISTRO_NAME
 export DETECTED_VALID_DISTRO_VERSION
@@ -152,11 +174,6 @@ repo_setup(){
 			fi
 		fi
 	fi
-
-
-
-
-
 }
 
 install_nginx(){
@@ -169,7 +186,7 @@ install_mariadb(){
 
 install_php(){
 	
-	validate_php_version $PHP_VERSION
+	validate_php_version $PHP_VERSION_TO_INSTALL
 	sudo apt install git-all sqlite3 nodejs npm php$PHP_VERSION-{fpm,sqlite3,mysql,xml,xmlrpc,curl,gd,imagick,cli,dev,imap,mbstring,opcache,soap,zip,intl,bcmath,bz2,xdebug,ctype,gmp,bcmath,dev} php$PHP_VERSION -y
 
 }
@@ -182,14 +199,41 @@ remove_domain_to_local(){
 	. ./scripts/hosts_file_manager remove 127.0.0.1 $1
 }
 
-create_fpm_for_user(){
-	sudo php scripts/fpm_create.php $1 $2
 
+
+create_fpm_for_user(){
+  LINUX_USER=$1
+  PHP_VERSION=$2
+  validate_user $LINUX_USER
+  VALUE_SELECTED_FROM_ARGS="undefined"
+  validate_php_version $PHP_VERSION
+
+
+  FILE_PATH=/etc/php/$PHP_VERSION/fpm/$LINUX_USER.conf
+  echo "$FILE_PATH"
+	if [[ "$1" == *"phpmyadmin"* ]]; then
+  	echo "It seams you are triying to set a new fpm for a phpmyadmin instance, a new fpm will be created from a phpmyadmin config template"
+  	sudo ./templates/fpm_phpmyadmin.template $LINUX_USER >> $FILE_PATH
+	else
+    sudo ./templates/fpm_general.template $LINUX_USER >> FILE_PATH
+	fi
+	echo "Fpm file has been create: "
+	echo "$FILE_PATH"
+	echo " "
+  restart_php $PHP_VERSION
 }
 
+remove_fpm_for_user(){
+FILE_PATH=/etc/php/$2/fpm/$1.conf
+	if [[ -f  $FILE_PATH ]]; then
+    echo "Removing Fpm file"
+    sudo rm "$FILE_PATH";
+	else
+    echo "$FILE_PATH does not exists"
+	fi
 
 
-
+}
 
 if [[ $INSTALL == true ]] ; then
 	echo "You've choose install"
@@ -203,7 +247,7 @@ else
 		   $SETUP_REPO  != true && 
 		   $NGIX_INSTALL  != true && 
 		   $MARIADB_INSTALL  != true && 
-		   -z $PHP_VERSION &&
+		   -z $PHP_VERSION_TO_INSTALL &&
 		   -z $DOMAIN_ADD &&
 		   -z $DOMAIN_DEL &&
 		   -z $FPM_CREATE_USER
@@ -211,7 +255,9 @@ else
 	]]; then 
 		show_help
 	else
-
+		if [[ -n $PHP_VERSION ]]; then
+			validate_php_version $PHP_VERSION
+		fi
 		if [[ $SETUP_REPO == true ]]; then 
 			repo_setup
 		fi
@@ -224,7 +270,7 @@ else
 			install_mariadb
 		fi
 
-		if [[ -n $PHP_VERSION ]]; then 
+		if [[ -n $PHP_VERSION_TO_INSTALL ]]; then
 			install_php
 		fi
 		
@@ -236,8 +282,8 @@ else
 		fi
 
 		if [[ -n $FPM_CREATE_USER ]]; then
-		  validate_php_version $PHP_VERSION 
-			create_fpm_for_user $FPM_CREATE_USER $PHP_VERSION
+
+		  create_fpm_for_user $FPM_CREATE_USER $PHP_VERSION
 		fi
 	fi
 

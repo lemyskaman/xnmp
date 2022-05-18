@@ -187,7 +187,8 @@ install_mariadb(){
 install_php(){
 	
 	validate_php_version $PHP_VERSION_TO_INSTALL
-	sudo apt install git-all sqlite3 nodejs npm php$PHP_VERSION-{fpm,sqlite3,mysql,xml,xmlrpc,curl,gd,imagick,cli,dev,imap,mbstring,opcache,soap,zip,intl,bcmath,bz2,xdebug,ctype,gmp,bcmath,dev} php$PHP_VERSION -y
+       
+	sudo apt install git-all sqlite3 nodejs npm php$PHP_VERSION_TO_INSTALL-{fpm,sqlite3,mysql,xml,xmlrpc,curl,gd,imagick,cli,dev,imap,mbstring,opcache,soap,zip,intl,bcmath,bz2,xdebug,ctype,gmp,bcmath,dev} php$PHP_VERSION -y
 
 }
 

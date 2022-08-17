@@ -10,6 +10,7 @@ Xnmp stands for:
   
  This package uses [sury php repo](https://deb.sury.org/) to allow you install multiple php versions on the same machine. The php installation on this package also install comons php libraries for laravel development.
   
+ With help you get available params
   
 
 

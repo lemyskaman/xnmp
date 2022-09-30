@@ -11,8 +11,8 @@ fi
 function validate() {
 for VALID_DISTRO_VERSION in "$@";
 do
-	if [[ $detected_distro_version == $VALID_DISTRO_VERSION ]]; then
-		DETECTED_VALID_DISTRO_VERSION=$detected_distro_version;
+	if [[ $DETECTED_DISTRO_VERSION == $VALID_DISTRO_VERSION ]]; then
+		DETECTED_VALID_DISTRO_VERSION=$DETECTED_DISTRO_VERSION;
 		break
 	fi 
 done
@@ -20,20 +20,22 @@ done
 
 if [[ -z $DETECTED_VALID_DISTRO_VERSION  ]]
 then
-      echo "Unable to determinate your Distro version or the given one \"$detected_distro_version\" is not among the valid distro names." 
+	echo ""
+      echo "Unable to determinate your Distro version or the given one \"$DETECTED_DISTRO_VERSION\" is not among the valid distro names." 
       echo "Valid distro versions are:"
       for name in "$@"; do echo "$name"; done
       echo ""
-      read -p "Please type one of the versions from the above list to select it: " detected_distro_version
+      read -p "Please type one of the versions from the above list to select it: " DETECTED_DISTRO_VERSION
       validate $@
 
 else
+	echo ""
       echo "$DETECTED_VALID_DISTRO_VERSION has been selected as your installation distro version"
 fi
 
 }
 
-detected_distro_version=$(lsb_release -r | cut -f 2)
+#DETECTED_DISTRO_VERSION=$(lsb_release -c | cut -f 2)
 validate $@
 export DETECTED_VALID_DISTRO_VERSION
 

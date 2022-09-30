@@ -28,7 +28,7 @@ done
 
 if [[ $VALUE_SELECTED_FROM_ARGS == "undefined" ]]; then
 
-      echo "the given value \"$detected_value\" is not among valid elements."
+      echo "the given value \"$detected_value\" is not among the valid elements."
       echo "Valid option elements are:"
       FIRST_AVOIDED=false
       for name in "$@"; do

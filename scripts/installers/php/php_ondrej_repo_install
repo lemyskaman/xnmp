@@ -1,0 +1,9 @@
+#! /bin/bash 
+
+
+
+echo "Installing needed packages"
+sudo apt install -y curl wget gnupg2 ca-certificates lsb-release apt-transport-https
+sudo add-apt-repository ppa:ondrej/php
+sudo apt update
+echo "ondrej php repo added"

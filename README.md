@@ -3,7 +3,7 @@ A collection of scripts to install natively ( no containers or virtualization ) 
 
 
 # Disclaimer
-This project is market as dead,  it should not be longer used. Instead you can use [npstool](https://github.com/kamansoft/native-php-setup-tool)
+This project is market as ***dead***,  it should not be longer used. Instead you can use [npstool](https://github.com/kamansoft/native-php-setup-tool)
 
 
 
